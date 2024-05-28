@@ -1,0 +1,129 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+#define SIZE 3
+
+struct Pair {
+    int first;
+    int second;
+};
+
+struct Node {
+    struct Pair priority;
+    int board[SIZE][SIZE];
+};
+
+void findZero(int board[SIZE][SIZE], int *x, int *y) {
+    for (int i = 0; i < SIZE; i++) {
+        for (int j = 0; j < SIZE; j++) {
+            if (board[i][j] == 0) {
+                *x = i;
+                *y = j;
+                return;
+            }
+        }
+    }
+}
+
+void printBoard(int board[SIZE][SIZE]) {
+    for (int i = 0; i < SIZE; i++) {
+        for (int j = 0; j < SIZE; j++) {
+            printf("%d ", board[i][j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
+
+int isGoalState(int board[SIZE][SIZE], int goal[SIZE][SIZE]) {
+    for (int i = 0; i < SIZE; i++) {
+        for (int j = 0; j < SIZE; j++) {
+            if (board[i][j] != goal[i][j]) {
+                return 0;
+            }
+        }
+    }
+    return 1;
+}
+
+int findMisplacedTiles(int board[SIZE][SIZE], int goal[SIZE][SIZE]) {
+    int count = 0;
+    for (int i = 0; i < SIZE; i++) {
+        for (int j = 0; j < SIZE; j++) {
+            if (board[i][j] != goal[i][j]) {
+                count++;
+            }
+        }
+    }
+    return count;
+}
+
+void swap(int *a, int *b) {
+    int temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+void aStar(int board[SIZE][SIZE], int goal[SIZE][SIZE], int depth, int x, int y) {
+    struct Node *pq = (struct Node *)malloc(sizeof(struct Node) * 100);
+    int front = -1, rear = -1;
+    int g = depth;
+    int h = findMisplacedTiles(board, goal);
+    rear++;
+    pq[rear].priority.first = g + h;
+    pq[rear].priority.second = g;
+    for (int i = 0; i < SIZE; i++) {
+        for (int j = 0; j < SIZE; j++) {
+            pq[rear].board[i][j] = board[i][j];
+        }
+    }
+    while (front != rear) {
+        struct Node current = pq[front + 1];
+        front++;
+        printBoard(current.board);
+        int x, y;
+        findZero(current.board, &x, &y);
+        if (isGoalState(current.board, goal)) {
+            printf("Goal State Reached\n");
+            free(pq);
+            return;
+        }
+        int dx[] = {0, 0, -1, 1};
+        int dy[] = {1, -1, 0, 0};
+        for (int i = 0; i < 4; i++) {
+            int newX = x + dx[i];
+            int newY = y + dy[i];
+            if (newX >= 0 && newX < SIZE && newY >= 0 && newY < SIZE) {
+                swap(&current.board[x][y], &current.board[newX][newY]);
+                int curr_h = findMisplacedTiles(current.board, goal);
+                rear++;
+                pq[rear].priority.first = current.priority.first + curr_h;
+                pq[rear].priority.second = current.priority.second;
+                for (int m = 0; m < SIZE; m++) {
+                    for (int n = 0; n < SIZE; n++) {
+                        pq[rear].board[m][n] = current.board[m][n];
+                    }
+                }
+                swap(&current.board[x][y], &current.board[newX][newY]);
+            }
+        }
+    }
+    free(pq);
+}
+
+int main() {
+    int initial[SIZE][SIZE] = {
+        {2, 8, 3},
+        {1, 6, 4},
+        {7, 5, 0}
+    };
+    int goal[SIZE][SIZE] = {
+        {1, 2, 3},
+        {8, 0, 4},
+        {7, 6, 5}
+    };
+    int x, y;
+    findZero(initial, &x, &y);
+    aStar(initial, goal, 0, x, y);
+    return 0;
+}
