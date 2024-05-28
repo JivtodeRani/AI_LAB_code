@@ -1,0 +1,162 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+struct Node {
+    int value;
+    int heuristic;
+};
+
+struct PriorityQueue {
+    struct Node* array;
+    int capacity;
+    int size;
+};
+
+struct Node* newNode(int value, int heuristic) {
+    struct Node* node = (struct Node*)malloc(sizeof(struct Node));
+    node->value = value;
+    node->heuristic = heuristic;
+    return node;
+}
+
+struct PriorityQueue* createPriorityQueue(int capacity) {
+    struct PriorityQueue* queue = (struct PriorityQueue*)malloc(sizeof(struct PriorityQueue));
+    queue->array = (struct Node*)malloc(capacity * sizeof(struct Node));
+    queue->capacity = capacity;
+    queue->size = 0;
+    return queue;
+}
+
+void swapNodes(struct Node* a, struct Node* b) {
+    struct Node temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+void heapify(struct PriorityQueue* queue, int idx) {
+    int smallest = idx;
+    int left = 2 * idx + 1;
+    int right = 2 * idx + 2;
+
+    if (left < queue->size && queue->array[left].heuristic < queue->array[smallest].heuristic) {
+        smallest = left;
+    }
+
+    if (right < queue->size && queue->array[right].heuristic < queue->array[smallest].heuristic) {
+        smallest = right;
+    }
+
+    if (smallest != idx) {
+        swapNodes(&queue->array[idx], &queue->array[smallest]);
+        heapify(queue, smallest);
+    }
+}
+
+void enqueue(struct PriorityQueue* queue, struct Node* node) {
+    if (queue->size == queue->capacity) {
+        printf("Priority Queue is full!\n");
+        return;
+    }
+
+    queue->size++;
+    int i = queue->size - 1;
+    queue->array[i] = *node;
+
+    while (i != 0 && queue->array[(i - 1) / 2].heuristic > queue->array[i].heuristic) {
+        swapNodes(&queue->array[i], &queue->array[(i - 1) / 2]);
+        i = (i - 1) / 2;
+    }
+}
+
+struct Node dequeue(struct PriorityQueue* queue) {
+    if (queue->size <= 0) {
+        printf("Priority Queue is empty!\n");
+        struct Node emptyNode = {-1, -1};
+        return emptyNode;
+    }
+
+    if (queue->size == 1) {
+        queue->size--;
+        return queue->array[0];
+    }
+
+    struct Node root = queue->array[0];
+    queue->array[0] = queue->array[queue->size - 1];
+    queue->size--;
+    heapify(queue, 0);
+
+    return root;
+}
+
+void freePriorityQueue(struct PriorityQueue* queue) {
+    free(queue->array);
+    free(queue);
+}
+
+struct Node* calculateManhattanHeuristics(int goal) {
+    struct Node* heuristicValues = (struct Node*)malloc(8 * sizeof(struct Node));
+
+    int nodeCoordinates[8][2] = {{0, 0}, {5, 8}, {8, 5}, {12, 2}, {3, 3}, {7, 7}, {11, 11}, {15, 15}};
+    int goalCoordinates[2] = {nodeCoordinates[goal][0], nodeCoordinates[goal][1]};
+
+    for (int i = 0; i < 8; i++) {
+        int distance = abs(nodeCoordinates[i][0] - goalCoordinates[0]) + abs(nodeCoordinates[i][1] - goalCoordinates[1]);
+        heuristicValues[i] = *newNode(i, distance);
+    }
+
+    return heuristicValues;
+}
+
+void bestFirstSearch(int graph[8][3], struct Node* heuristicValues, int start, int goal) {
+    struct PriorityQueue* queue = createPriorityQueue(8);
+    int parent[8] = {0};
+    int visited[8] = {0};
+
+    enqueue(queue, &heuristicValues[start]);
+
+    while (queue->size > 0) {
+        struct Node currentNode = dequeue(queue);
+        int current = currentNode.value;
+
+        if (current == goal) {
+            printf("Goal state reached!\n");
+            printf("Path: %d", current);
+            while (parent[current] != 0) {
+                printf(" <- %d", parent[current]);
+                current = parent[current];
+            }
+            printf("\n");
+            freePriorityQueue(queue);
+            return;
+        }
+
+        visited[current] = 1;
+
+        for (int i = 0; i < 3; i++) {
+            int neighbor = graph[current][i];
+            if (!visited[neighbor]) {
+                parent[neighbor] = current;
+                enqueue(queue, &heuristicValues[neighbor]);
+            }
+        }
+    }
+
+    printf("Goal state not reachable!\n");
+    freePriorityQueue(queue);
+}
+
+int main() {
+    int graph[8][3] = {{1, 2, 3}, {0, 4, -1}, {0, 4, 5}, {0, 5, -1}, {1, 2, 6}, {2, 3, 6}, {4, 5, 7}, {-1}};
+
+    int startState, goalState;
+    printf("Enter the start state: ");
+    scanf("%d", &startState);
+    printf("Enter the goal state: ");
+    scanf("%d", &goalState);
+
+    struct Node* heuristicValues = calculateManhattanHeuristics(goalState);
+    bestFirstSearch(graph, heuristicValues, startState, goalState);
+
+    free(heuristicValues);
+    return 0;
+}
